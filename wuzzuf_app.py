@@ -20,7 +20,7 @@ model, le = load_model()
 
 @st.cache_data
 def load_data():
-    return pd.read_csv(os.path.join(BASE, '..', 'wuzzuf_cleaned.csv'))
+    return pd.read_csv(os.path.join(BASE, 'wuzzuf_cleaned.csv'))
 
 df = load_data()
 
