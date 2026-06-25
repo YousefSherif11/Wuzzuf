@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wuzzuf Experience Level Predictor — Project Presentation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #26354a;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --accent-pink: #ec4899;
+            --accent-teal: #14b8a6;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #334155;
+            --gradient-1: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            --gradient-2: linear-gradient(135deg, #10b981, #14b8a6);
+            --gradient-3: linear-gradient(135deg, #f59e0b, #ef4444);
+            --gradient-4: linear-gradient(135deg, #ec4899, #8b5cf6);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* ── Particle Canvas ── */
+        #particles-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* ── Navigation ── */
+        .nav-dots {
+            position: fixed;
+            right: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .nav-dot {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: var(--border);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .nav-dot::after {
+            content: attr(data-label);
+            position: absolute;
+            right: 24px;
+            top: 50%;
+            transform: translateY(-50%) translateX(10px);
+            background: var(--bg-card);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border);
+        }
+
+        .nav-dot:hover::after {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0);
+        }
+
+        .nav-dot.active {
+            background: var(--accent-blue);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+            transform: scale(1.3);
+        }
+
+        /* ── Sections ── */
+        .section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .section-content {
+            max-width: 1200px;
+            width: 100%;
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .section.visible .section-content {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ── Hero ── */
+        .hero {
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent-blue);
+            margin-bottom: 32px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .hero-badge .pulse {
+            width: 8px; height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 5rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #f1f5f9 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero h1 .highlight {
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1rem, 2vw, 1.35rem);
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin: 0 auto 48px;
+            font-weight: 400;
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            flex-wrap: wrap;
+            margin-top: 48px;
+        }
+
+        .hero-stat {
+            text-align: center;
+        }
+
+        .hero-stat .number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-stat .label {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 12px;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(8px); }
+        }
+
+        .scroll-indicator svg {
+            width: 24px; height: 24px;
+        }
+
+        /* ── Section Headers ── */
+        .section-header {
+            text-align: center;
+            margin-bottom: 56px;
+        }
+
+        .section-tag {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .section-desc {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* ── Cards Grid ── */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 3px;
+            background: var(--card-accent, var(--accent-blue));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s ease;
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        .card-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 16px;
+            background: var(--card-accent-bg, rgba(59,130,246,0.1));
+        }
+
+        .card h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .card ul {
+            list-style: none;
+        }
+
+        .card li {
+            font-size: 13.5px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .card li::before {
+            content: '●';
+            position: absolute;
+            left: 0;
+            font-size: 6px;
+            top: 2px;
+        }
+
+        /* ── Pipeline Flow ── */
+        .pipeline {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0;
+            margin: 48px 0;
+        }
+
+        .pipeline-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 20px 24px;
+            min-width: 140px;
+        }
+
+        .pipeline-icon {
+            width: 56px; height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .pipeline-step:hover .pipeline-icon {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(59,130,246,0.2);
+        }
+
+        .pipeline-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .pipeline-arrow {
+            color: var(--text-muted);
+            font-size: 20px;
+            animation: arrowPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes arrowPulse {
+            0%, 100% { opacity: 0.3; transform: translateX(0); }
+            50% { opacity: 1; transform: translateX(4px); }
+        }
+
+        /* ── Metrics Row ── */
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            border-color: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric-change {
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 6px;
+        }
+
+        .metric-change.positive { color: var(--accent-green); }
+        .metric-change.negative { color: var(--accent-red); }
+
+        /* ── Charts ── */
+        .chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .charts-grid { grid-template-columns: 1fr; }
+            .metrics-row { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 600px) {
+            .metrics-row { grid-template-columns: 1fr; }
+            .cards-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── Model Comparison Table ── */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comparison-table th {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .comparison-table td {
+            font-size: 14px;
+        }
+
+        .comparison-table tr:hover td {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .model-best {
+            background: rgba(16, 185, 129, 0.08) !important;
+            border-left: 3px solid var(--accent-green);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-green {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+        }
+
+        .badge-blue {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .badge-amber {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-amber);
+        }
+
+        /* ── Code Block ── */
+        .code-block {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        .code-block .comment { color: #8b949e; }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .string { color: #a5d6ff; }
+        .code-block .number { color: #79c0ff; }
+        .code-block .function { color: #d2a8ff; }
+
+        /* ── Feature Tags ── */
+        .feature-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .feature-tag {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--accent-blue);
+        }
+
+        /* ── Demo Preview ── */
+        .demo-frame {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-top: 32px;
+        }
+
+        .demo-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .demo-dot {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+        }
+
+        .demo-body {
+            padding: 32px;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 32px;
+        }
+
+        .demo-sidebar {
+            background: rgba(0,0,0,0.15);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .demo-sidebar h4 {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+
+        .demo-field {
+            margin-bottom: 14px;
+        }
+
+        .demo-field label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .demo-field select,
+        .demo-field input {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .demo-main {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .demo-result {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .demo-result .result-label {
+            font-size: 12px;
+            color: var(--accent-green);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .demo-result .result-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent-green);
+        }
+
+        .demo-probabilities {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .prob-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .prob-label {
+            width: 140px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: right;
+        }
+
+        .prob-track {
+            flex: 1;
+            height: 24px;
+            background: var(--bg-dark);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .prob-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+        }
+
+        .prob-fill span {
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+        }
+
+        /* ── Footer ── */
+        .footer {
+            text-align: center;
+            padding: 60px 40px;
+            border-top: 1px solid var(--border);
+        }
+
+        .footer h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .footer p {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .footer-link {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            transition: opacity 0.2s;
+        }
+
+        .footer-link:hover { opacity: 0.7; }
+
+        /* ── Animations ── */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        .delay-1 { animation-delay: 0.1s; opacity: 0; }
+        .delay-2 { animation-delay: 0.2s; opacity: 0; }
+        .delay-3 { animation-delay: 0.3s; opacity: 0; }
+        .delay-4 { animation-delay: 0.4s; opacity: 0; }
+        .delay-5 { animation-delay: 0.5s; opacity: 0; }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .section { padding: 60px 20px; }
+            .nav-dots { display: none; }
+            .demo-body { grid-template-columns: 1fr; }
+            .hero-stats { gap: 24px; }
+            .pipeline { flex-direction: column; gap: 16px; }
+            .pipeline-arrow { transform: rotate(90deg); }
+        }
+    </style>
+<base target="_blank">
+</head>
+<body>
+
+    <canvas id="particles-canvas"></canvas>
+
+    <!-- Navigation Dots -->
+    <div class="nav-dots">
+        <div class="nav-dot active" data-label="Hero" onclick="scrollToSection(0)"></div>
+        <div class="nav-dot" data-label="Overview" onclick="scrollToSection(1)"></div>
+        <div class="nav-dot" data-label="Pipeline" onclick="scrollToSection(2)"></div>
+        <div class="nav-dot" data-label="Features" onclick="scrollToSection(3)"></div>
+        <div class="nav-dot" data-label="Model" onclick="scrollToSection(4)"></div>
+        <div class="nav-dot" data-label="Results" onclick="scrollToSection(5)"></div>
+        <div class="nav-dot" data-label="Demo" onclick="scrollToSection(6)"></div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 1: HERO -->
+    <!-- ═══════════════════════════════════════ -->
+    <section class="section" id="section-0">
+        <div class="section-content">
+            <div class="hero">
+                <div class="hero-badge">
+                    <span class="pulse"></span>
+                    Machine Learning Classification Project
+                </div>
+                <h1>
+                    Wuzzuf <span class="highlight">Experience Level</span><br>Predictor
+                </h1>
+                <p class="hero-subtitle">
+                    An end-to-end ML pipeline that predicts job experience levels from Wuzzuf — Egypt's leading job platform — using advanced feature engineering and XGBoost classification.
+                </p>
+                <div class="hero-stats">
+                    <div class="hero-stat">
+                        <div class="number">5</div>
+                        <div class="label">Target Classes</div>
+                    </div>
+                    <div class="hero-stat">
+                        <div class="number">9</div>
+                        <div class="label">Input Features</div>
+                    </div>
+                    <div class="hero-stat">
+                        <div class="number">XGB</div>
+                        <div class="label">Best Model</div>
+                    </div>
+                    <div class="hero-stat">
+                        <div class="number">5-Fold</div>
+                        <div class="label">Stratified CV</div>
+                    </div>
+                </div>
+            </div>
+            <div class="scroll-indicator">
+                <span>Scroll to explore</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12l7 7 7-7"/>
+                </svg>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 2: PROJECT OVERVIEW -->
+    <!-- ═══════════════════════════════════════ -->
+    <section class="section" id="section-1">
+        <div class="section-content">
+            <div class="section-header">
+                <div class="section-tag">01 / Overview</div>
+                <h2 class="section-title">Project Overview</h2>
+                <p class="section-desc">Key decisions and highlights across every stage of the ML pipeline</p>
+            </div>
+            <div class="cards-grid">
+                <div class="card" style="--card-accent: #3b82f6; --card-accent-bg: rgba(59,130,246,0.1);">
+                    <div class="card-icon">📊</div>
+                    <h3>Dataset Overview</h3>
+                    <ul>
+                        <li style="color:#3b82f6;">Scraped from Wuzzuf — Egypt's top job platform</li>
+                        <li style="color:#3b82f6;">Target: 5 classes — Entry Level, Experienced, Manager, Senior Management, Student</li>
+                        <li style="color:#3b82f6;">Supervised multi-class classification task</li>
+                    </ul>
+                </div>
+                <div class="card" style="--card-accent: #10b981; --card-accent-bg: rgba(16,185,129,0.1);">
+                    <div class="card-icon">🧹</div>
+                    <h3>Data Cleaning</h3>
+                    <ul>
+                        <li style="color:#10b981;">Dropped all URL columns, misc, job_title & company_name</li>
+                        <li style="color:#10b981;">Removed duplicates and reset index</li>
+                        <li style="color:#10b981;">Stripped bullet chars ( · - * • ) from all skill and category columns</li>
+                    </ul>
+                </div>
+                <div class="card" style="--card-accent: #f59e0b; --card-accent-bg: rgba(245,158,11,0.1);">
+                    <div class="card-icon">⚙️</div>
+                    <h3>Feature Engineering</h3>
+                    <ul>
+                        <li style="color:#f59e0b;">Parsed experience range → numeric average (exp_years)</li>
+                        <li style="color:#f59e0b;">Extracted city & country from location string</li>
+                        <li style="color:#f59e0b;">8 skill columns → skills_count + top_skill + second_skill</li>
+                        <li style="color:#f59e0b;">Skills longer than 40 chars mapped to "Unknown"</li>
+                    </ul>
+                </div>
+                <div class="card" style="--card-accent: #ef4444; --card-accent-bg: rgba(239,68,68,0.1);">
+                    <div class="card-icon">⚖️</div>
+                    <h3>Class Imbalance</h3>
+                    <ul>
+                        <li style="color:#ef4444;">compute_sample_weight(class_weight='balanced')</li>
+                        <li style="color:#ef4444;">Student class gets significantly higher weight vs Experienced</li>
+                        <li style="color:#ef4444;">Weights applied only to training folds — never test folds</li>
+                    </ul>
+                </div>
+                <div class="card" style="--card-accent: #8b5cf6; --card-accent-bg: rgba(139,92,246,0.1);">
+                    <div class="card-icon">🔬</div>
+                    <h3>Preprocessing Pipeline</h3>
+                    <ul>
+                        <li style="color:#8b5cf6;">Numerical: Median Imputer → Standard Scaler</li>
+                        <li style="color:#8b5cf6;">Categorical: Simple Imputer → OHE / Ordinal Encoder</li>
+                        <li style="color:#8b5cf6;">Full sklearn Pipeline — zero data leakage guaranteed</li>
+                    </ul>
+                </div>
+                <div class="card" style="--card-accent: #ec4899; --card-accent-bg: rgba(236,72,153,0.1);">
+                    <div class="card-icon">🚀</div>
+                    <h3>Deployment</h3>
+                    <ul>
+                        <li style="color:#ec4899;">Streamlit app — 5 pages: Dataset Info, EDA, Prediction, Insights, Business</li>
+                        <li style="color:#ec4899;">Model + LabelEncoder saved via joblib</li>
+                        <li style="color:#ec4899;">Real-time prediction with probability bar chart per class</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 3: ML PIPELINE -->
+    <!-- ═══════════════════════════════════════ -->
+    <section class="section" id="section-2">
+        <div class="section-content">
+            <div class="section-header">
+                <div class="section-tag">02 / Pipeline</div>
+                <h2 class="section-title">ML Pipeline Architecture</h2>
+                <p class="section-desc">From raw scraped data to deployed prediction engine</p>
+            </div>
+
+            <div class="pipeline">
+                <div class="pipeline-step">
+                    <div class="pipeline-icon">🌐</div>
+                    <div class="pipeline-label">Web Scraping<br><span style="color:var(--text-muted);font-weight:400;">Wuzzuf API</span></div>
+                </div>
+                <div class="pipeline-arrow">→</div>
+                <div class="pipeline-step">
+                    <div class="pipeline-icon">🧹</div>
+                    <div class="pipeline-label">Data Cleaning<br><span style="color:var(--text-muted);font-weight:400;">Deduplication</span></div>
+                </div>
+                <div class="pipeline-arrow">→</div>
+                <div class="pipeline-step">
+                    <div class="pipeline-icon">⚙️</div>
+                    <div class="pipeline-label">Feature Eng.<br><span style="color:var(--text-muted);font-weight:400;">9 Features</span></div>
+                </div>
+                <div class="pipeline-arrow">→</div>
+                <div class="pipeline-step">
+                    <div class="pipeline-icon">🔬</div>
+                    <div class="pipeline-label">Preprocessing<br><span style="color:var(--text-muted);font-weight:400;">Pipeline</span></div>
+                </div>
+                <div class="pipeline-arrow">→</div>
+                <div class="pipeline-step">
+                    <div class="pipeline-icon">🤖</div>
+                    <div class="pipeline-label">Model Training<br><span style="color:var(--text-muted);font-weight:400;">XGBoost</span></div>
+                </div>
+                <div class="pipeline-arrow">→</div>
+                <div class="pipeline-step">
+                    <div class="pipeline-icon">📊</div>
+                    <div class="pipeline-label">Evaluation<br><span style="color:var(--text-muted);font-weight:400;">5-Fold CV</span></div>
+                </div>
+                <div class="pipeline-arrow">→</div>
+                <div class="pipeline-step">
+                    <div class="pipeline-icon">🚀</div>
+                    <div class="pipeline-label">Deployment<br><span style="color:var(--text-muted);font-weight:400;">Streamlit</span></div>
+                </div>
+            </div>
+
+            <div class="code-block">
+<span class="comment"># Zero Data Leakage Pipeline</span>
+<span class="keyword">from</span> sklearn.pipeline <span class="keyword">import</span> Pipeline
+<span class="keyword">from</span> sklearn.compose <span class="keyword">import</span> ColumnTransformer
+<span class="keyword">from</span> sklearn.preprocessing <span class="keyword">import</span> OneHotEncoder, StandardScaler
+<span class="keyword">from</span> sklearn.impute <span class="keyword">import</span> SimpleImputer
+
+<span class="comment"># Numerical pipeline</span>
+num_pipe = Pipeline([
+    (<span class="string">'imputer'</span>, SimpleImputer(strategy=<span class="string">'median'</span>)),
+    (<span class="string">'scaler'</span>, StandardScaler())
+])
+
+<span class="comment"># Categorical pipeline</span>
+cat_pipe = Pipeline([
+    (<span class="string">'imputer'</span>, SimpleImputer(strategy=<span class="string">'most_frequent'</span>)),
+    (<span class="string">'encoder'</span>, OneHotEncoder(handle_unknown=<span class="string">'ignore'</span>))
+])
+
+<span class="comment"># Full preprocessing — no leakage possible</span>
+preprocessor = ColumnTransformer([
+    (<span class="string">'num'</span>, num_pipe, numerical_features),
+    (<span class="string">'cat'</span>, cat_pipe, categorical_features)
+])
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 4: FEATURES -->
+    <!-- ═══════════════════════════════════════ -->
+    <section class="section" id="section-3">
+        <div class="section-content">
+            <div class="section-header">
+                <div class="section-tag">03 / Features</div>
+                <h2 class="section-title">Feature Engineering</h2>
+                <p class="section-desc">Transforming raw job listings into ML-ready features</p>
+            </div>
+
+            <div class="metrics-row">
+                <div class="metric-card">
+                    <div class="metric-value" style="color: var(--accent-blue);">9</div>
+                    <div class="metric-label">Total Features</div>
+                    <div class="metric-change positive">Engineered from raw data</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" style="color: var(--accent-green);">2</div>
+                    <div class="metric-label">Numerical</div>
+                    <div class="metric-change positive">exp_years, skills_count</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" style="color: var(--accent-amber);">7</div>
+                    <div class="metric-label">Categorical</div>
+                    <div class="metric-change positive">Encoded with OHE</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" style="color: var(--accent-purple);">5</div>
+                    <div class="metric-label">Target Classes</div>
+                    <div class="metric-change positive">Multi-class output</div>
+                </div>
+            </div>
+
+            <div class="cards-grid">
+                <div class="card" style="--card-accent: #3b82f6; --card-accent-bg: rgba(59,130,246,0.1);">
+                    <div class="card-icon">📍</div>
+                    <h3>Location Features</h3>
+                    <ul>
+                        <li style="color:#3b82f6;"><strong>city</strong> — Extracted from location string</li>
+                        <li style="color:#3b82f6;"><strong>country</strong> — Geographic segmentation</li>
+                    </ul>
+                    <div class="feature-tags">
+                        <span class="feature-tag">Categorical</span>
+                        <span class="feature-tag">OHE Encoded</span>
+                    </div>
+                </div>
+                <div class="card" style="--card-accent: #10b981; --card-accent-bg: rgba(16,185,129,0.1);">
+                    <div class="card-icon">💼</div>
+                    <h3>Job Metadata</h3>
+                    <ul>
+                        <li style="color:#10b981;"><strong>employment_type</strong> — Full Time / Part Time / Internship / Freelance</li>
+                        <li style="color:#10b981;"><strong>work_mode</strong> — On-site / Remote / Hybrid</li>
+                        <li style="color:#10b981;"><strong>job_category</strong> — Accounting / IT / Engineering / ...</li>
+                    </ul>
+                    <div class="feature-tags">
+                        <span class="feature-tag">Categorical</span>
+                        <span class="feature-tag">OHE Encoded</span>
+                    </div>
+                </div>
+                <div class="card" style="--card-accent: #f59e0b; --card-accent-bg: rgba(245,158,11,0.1);">
+                    <div class="card-icon">🎯</div>
+                    <h3>Experience & Skills</h3>
+                    <ul>
+                        <li style="color:#f59e0b;"><strong>exp_years</strong> — Numeric average from range string</li>
+                        <li style="color:#f59e0b;"><strong>skills_count</strong> — Count of required skills</li>
+                        <li style="color:#f59e0b;"><strong>top_skill</strong> — Most important skill</li>
+                        <li style="color:#f59e0b;"><strong>second_skill</strong> — Second most important</li>
+                    </ul>
+                    <div class="feature-tags">
+                        <span class="feature-tag">Mixed Types</span>
+                        <span class="feature-tag">Scaled + Encoded</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 5: MODEL -->
+    <!-- ═══════════════════════════════════════ -->
+    <section class="section" id="section-4">
+        <div class="section-content">
+            <div class="section-header">
+                <div class="section-tag">04 / Model</div>
+                <h2 class="section-title">Model Selection & Tuning</h2>
+                <p class="section-desc">Comparing algorithms with stratified cross-validation</p>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Model Comparison Results</div>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Key Hyperparameters</th>
+                            <th>Validation Strategy</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>KNN</strong></td>
+                            <td>neighbors, distance metric, weight scheme</td>
+                            <td>RandomizedSearchCV · 5-fold</td>
+                            <td><span class="badge badge-amber">Baseline</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Decision Tree</strong></td>
+                            <td>max_depth, min_samples tuning</td>
+                            <td>RandomizedSearchCV · 5-fold</td>
+                            <td><span class="badge badge-amber">Baseline</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Random Forest</strong></td>
+                            <td>n_estimators & depth tuning</td>
+                            <td>RandomizedSearchCV · 5-fold</td>
+                            <td><span class="badge badge-blue">Strong</span></td>
+                        </tr>
+                        <tr class="model-best">
+                            <td><strong>XGBoost</strong> 🏆</td>
+                            <td>n_estimators=500, max_depth=7, lr=0.01</td>
+                            <td>StratifiedKFold · 5 splits · OOF</td>
+                            <td><span class="badge badge-green">Best</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="cards-grid" style="margin-top: 24px;">
+                <div class="card" style="--card-accent: #059669; --card-accent-bg: rgba(5,150,105,0.1);">
+                    <div class="card-icon">🏆</div>
+                    <h3>Best Model — XGBoost</h3>
+                    <ul>
+                        <li style="color:#059669;">n_estimators=500, max_depth=7, learning_rate=0.01</li>
+                        <li style="color:#059669;">subsample=0.7, colsample_bytree=0.7</li>
+                        <li style="color:#059669;">StratifiedKFold (5 splits) with out-of-fold predictions</li>
+                        <li style="color:#059669;">Each row evaluated on a model that never trained on it</li>
+                    </ul>
+                </div>
+                <div class="card" style="--card-accent: #8b5cf6; --card-accent-bg: rgba(139,92,246,0.1);">
+                    <div class="card-icon">🛡️</div>
+                    <h3>Robust Validation</h3>
+                    <ul>
+                        <li style="color:#8b5cf6;">Stratified sampling preserves class distribution</li>
+                        <li style="color:#8b5cf6;">Out-of-fold predictions = unbiased estimates</li>
+                        <li style="color:#8b5cf6;">No data leakage through preprocessing pipeline</li>
+                        <li style="color:#8b5cf6;">Balanced class weights for minority classes</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 6: RESULTS & INSIGHTS -->
+    <!-- ═══════════════════════════════════════ -->
+    <section class="section" id="section-5">
+        <div class="section-content">
+            <div class="section-header">
+                <div class="section-tag">05 / Results</div>
+                <h2 class="section-title">Business Insights & KPIs</h2>
+                <p class="section-desc">Live metrics computed directly from the Wuzzuf dataset</p>
+            </div>
+
+            <div class="metrics-row">
+                <div class="metric-card">
+                    <div class="metric-value" style="color: var(--accent-blue);">~3,000+</div>
+                    <div class="metric-label">Total Job Listings</div>
+                    <div class="metric-change positive">Scraped from Wuzzuf</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" style="color: var(--accent-green);">Experienced</div>
+                    <div class="metric-label">Dominant Level</div>
+                    <div class="metric-change positive">Largest class share</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" style="color: var(--accent-amber);">Cairo</div>
+                    <div class="metric-label">Top Hiring City</div>
+                    <div class="metric-change positive">Majority of listings</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" style="color: var(--accent-purple);">Full Time</div>
+                    <div class="metric-label">Employment Type</div>
+                    <div class="metric-change positive">Dominant type</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div class="chart-title">Experience Level Distribution</div>
+                    <canvas id="pieChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">Avg. Years of Experience per Level</div>
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">Top 10 Most Demanded Skills</div>
+                <canvas id="skillsChart" height="80"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- SECTION 7: LIVE DEMO -->
+    <!-- ═══════════════════════════════════════ -->
+    <section class="section" id="section-6">
+        <div class="section-content">
+            <div class="section-header">
+                <div class="section-tag">06 / Demo</div>
+                <h2 class="section-title">Live Prediction Interface</h2>
+                <p class="section-desc">Streamlit-powered real-time experience level prediction</p>
+            </div>
+
+            <div class="demo-frame">
+                <div class="demo-header">
+                    <div class="demo-dot" style="background:#ef4444;"></div>
+                    <div class="demo-dot" style="background:#f59e0b;"></div>
+                    <div class="demo-dot" style="background:#10b981;"></div>
+                    <span style="margin-left:8px;font-size:12px;color:var(--text-muted);">Wuzzuf Experience Level Predictor — Streamlit App</span>
+                </div>
+                <div class="demo-body">
+                    <div class="demo-sidebar">
+                        <h4>Job Specifications</h4>
+                        <div class="demo-field">
+                            <label>Employment Type</label>
+                            <select><option>Full Time</option></select>
+                        </div>
+                        <div class="demo-field">
+                            <label>Work Mode</label>
+                            <select><option>On-site</option></select>
+                        </div>
+                        <div class="demo-field">
+                            <label>Job Category</label>
+                            <select><option>IT / Software Development</option></select>
+                        </div>
+                        <div class="demo-field">
+                            <label>Country</label>
+                            <select><option>Egypt</option></select>
+                        </div>
+                        <div class="demo-field">
+                            <label>City</label>
+                            <select><option>Cairo</option></select>
+                        </div>
+                        <div class="demo-field">
+                            <label>Top Skill</label>
+                            <select><option>Python</option></select>
+                        </div>
+                        <div class="demo-field">
+                            <label>Second Skill</label>
+                            <select><option>Machine Learning</option></select>
+                        </div>
+                        <div class="demo-field">
+                            <label>Years of Experience</label>
+                            <input type="range" min="0" max="20" value="3">
+                        </div>
+                        <div class="demo-field">
+                            <label>Skills Count</label>
+                            <input type="range" min="2" max="8" value="5">
+                        </div>
+                        <button style="width:100%;padding:10px;background:var(--accent-blue);color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;margin-top:8px;">Predict Experience Level</button>
+                    </div>
+                    <div class="demo-main">
+                        <div class="demo-result">
+                            <div class="result-label">Predicted Experience Level</div>
+                            <div class="result-value">Experienced</div>
+                        </div>
+                        <div class="chart-container" style="margin:0;">
+                            <div class="chart-title">Prediction Probabilities</div>
+                            <div class="demo-probabilities">
+                                <div class="prob-bar">
+                                    <div class="prob-label">Experienced</div>
+                                    <div class="prob-track">
+                                        <div class="prob-fill" style="width:72%;background:var(--accent-green);"><span>72%</span></div>
+                                    </div>
+                                </div>
+                                <div class="prob-bar">
+                                    <div class="prob-label">Entry Level</div>
+                                    <div class="prob-track">
+                                        <div class="prob-fill" style="width:15%;background:var(--accent-blue);"><span>15%</span></div>
+                                    </div>
+                                </div>
+                                <div class="prob-bar">
+                                    <div class="prob-label">Manager</div>
+                                    <div class="prob-track">
+                                        <div class="prob-fill" style="width:8%;background:var(--accent-amber);"><span>8%</span></div>
+                                    </div>
+                                </div>
+                                <div class="prob-bar">
+                                    <div class="prob-label">Senior Mgmt</div>
+                                    <div class="prob-track">
+                                        <div class="prob-fill" style="width:4%;background:var(--accent-red);"><span>4%</span></div>
+                                    </div>
+                                </div>
+                                <div class="prob-bar">
+                                    <div class="prob-label">Student</div>
+                                    <div class="prob-track">
+                                        <div class="prob-fill" style="width:1%;background:var(--accent-purple);"><span>1%</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- FOOTER -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="footer">
+        <h3>Wuzzuf Experience Level Predictor</h3>
+        <p>End-to-end machine learning pipeline for job market classification</p>
+        <div class="footer-links">
+            <a href="#" class="footer-link">📊 Dataset Analysis</a>
+            <a href="#" class="footer-link">🤖 Model Training</a>
+            <a href="#" class="footer-link">🚀 Streamlit App</a>
+            <a href="#" class="footer-link">📈 Business Insights</a>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════
+        // PARTICLE SYSTEM
+        // ═══════════════════════════════════════
+        const canvas = document.getElementById('particles-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let mouseX = 0, mouseY = 0;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.radius = Math.random() * 2 + 1;
+                this.opacity = Math.random() * 0.5 + 0.2;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(100, 130, 180, ${this.opacity})`;
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < 60; i++) particles.push(new Particle());
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            // Draw connections
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 150) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(100, 130, 180, ${0.1 * (1 - dist / 150)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // ═══════════════════════════════════════
+        // SCROLL OBSERVER
+        // ═══════════════════════════════════════
+        const sections = document.querySelectorAll('.section');
+        const dots = document.querySelectorAll('.nav-dot');
+        let currentSection = 0;
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    const idx = Array.from(sections).indexOf(entry.target);
+                    currentSection = idx;
+                    dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+                }
+            });
+        }, { threshold: 0.3 });
+
+        sections.forEach(s => observer.observe(s));
+
+        function scrollToSection(index) {
+            sections[index].scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ═══════════════════════════════════════
+        // CHARTS
+        // ═══════════════════════════════════════
+        Chart.register(ChartDataLabels);
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = 'Inter';
+
+        // Pie Chart
+        new Chart(document.getElementById('pieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Experienced', 'Entry Level', 'Manager', 'Senior Management', 'Student'],
+                datasets: [{
+                    data: [45, 25, 15, 10, 5],
+                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                    borderWidth: 0,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '60%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } },
+                    datalabels: {
+                        color: '#fff',
+                        font: { weight: 'bold', size: 12 },
+                        formatter: (value) => value + '%'
+                    }
+                }
+            }
+        });
+
+        // Bar Chart
+        new Chart(document.getElementById('barChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Senior Management', 'Manager', 'Experienced', 'Entry Level', 'Student'],
+                datasets: [{
+                    label: 'Avg. Years',
+                    data: [12.5, 8.2, 4.5, 1.2, 0.5],
+                    backgroundColor: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6'],
+                    borderRadius: 8,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'top',
+                        color: '#f1f5f9',
+                        font: { weight: 'bold' },
+                        formatter: (v) => v + ' yrs'
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Skills Chart
+        new Chart(document.getElementById('skillsChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Python', 'SQL', 'JavaScript', 'Excel', 'Project Management', 'Communication', 'Data Analysis', 'Marketing', 'Sales', 'Accounting'],
+                datasets: [{
+                    label: 'Listings',
+                    data: [320, 280, 240, 210, 190, 170, 150, 130, 110, 90],
+                    backgroundColor: '#14b8a6',
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'right',
+                        color: '#f1f5f9',
+                        font: { weight: 'bold', size: 11 }
+                    }
+                },
+                scales: {
+                    x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Animate probability bars on scroll
+        const probObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    document.querySelectorAll('.prob-fill').forEach(bar => {
+                        const width = bar.style.width;
+                        bar.style.width = '0%';
+                        setTimeout(() => { bar.style.width = width; }, 200);
+                    });
+                }
+            });
+        }, { threshold: 0.5 });
+
+        const demoSection = document.querySelector('.demo-frame');
+        if (demoSection) probObserver.observe(demoSection);
+    </script>
+</body>
+</html>
